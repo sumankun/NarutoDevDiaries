@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Diary Editor</title>
+  <style>
+    :root{
+      --bg:#14182f;
+      --line:rgba(255,255,255,.09);
+      --text:#f4f3fb;
+      --muted:#b9b4cf;
+      --accent:#c49bff;
+      --article-width:760px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;height:100%}
+    body{
+      color:var(--text);
+      font-family:Georgia,"Times New Roman",serif;
+      line-height:1.75;
+      background:
+        radial-gradient(circle at 50% 40%, rgba(194,120,255,.34) 0%, rgba(194,120,255,.18) 14%, rgba(194,120,255,.07) 28%, rgba(0,0,0,0) 44%),
+        radial-gradient(circle at 50% 82%, rgba(124,173,255,.16) 0%, rgba(124,173,255,.07) 16%, rgba(0,0,0,0) 34%),
+        radial-gradient(circle at 18% 22%, rgba(129,55,186,.36) 0%, rgba(129,55,186,.12) 24%, rgba(0,0,0,0) 46%),
+        radial-gradient(circle at 82% 26%, rgba(35,82,176,.3) 0%, rgba(35,82,176,.1) 22%, rgba(0,0,0,0) 44%),
+        linear-gradient(135deg,#2a103c 0%, #1b1237 30%, #101833 62%, #0a2248 100%);
+      background-attachment:fixed;
+    }
+    .topbar{
+      position:fixed;top:0;left:0;right:0;z-index:500;
+      backdrop-filter:blur(10px);
+      background:rgba(7,9,18,.72);
+      border-bottom:1px solid var(--line);
+    }
+    .toolbar{
+      display:flex;flex-wrap:wrap;gap:8px;
+      align-items:center;
+      padding:12px 14px;
+      max-width:1200px;margin:0 auto;
+      font-family:Arial,Helvetica,sans-serif;
+    }
+    .toolbar button,.toolbar input,.toolbar select{
+      background:rgba(255,255,255,.05);
+      color:var(--text);
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:8px 10px;
+      font:inherit;
+    }
+    .toolbar button{cursor:pointer}
+    .toolbar button:hover{border-color:rgba(255,255,255,.18);background:rgba(255,255,255,.08)}
+    .toolbar .spacer{flex:1}
+    .wrap{padding:120px 0 70px}
+    .editor-shell{
+      width:min(100% - 64px, var(--article-width));
+      margin:0 auto;
+      position:relative;
+      z-index:1;
+    }
+    .editor-shell::before{
+      content:"";
+      position:absolute;
+      inset:-24px;
+      background:rgba(8,10,24,.22);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:18px;
+      backdrop-filter:blur(4px);
+      z-index:-1;
+    }
+    .meta-inputs{
+      display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;
+      margin-bottom:24px;
+      font-family:Arial,Helvetica,sans-serif;
+    }
+    .meta-box label{
+      display:block;margin:0 0 6px;color:var(--muted);font-size:.92rem
+    }
+    .meta-box input{
+      width:100%;
+      background:rgba(255,255,255,.05);
+      color:var(--text);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px 12px;
+      font:inherit;
+    }
+    .article{min-height:60vh;outline:none}
+    .article-title{
+      margin:0 0 10px;
+      font-family:Arial,Helvetica,sans-serif;
+      font-size:3rem;
+      line-height:1.12;
+      font-weight:700;
+      letter-spacing:-0.02em;
+      color:#f5f2ff;
+    }
+    .article-meta{
+      margin:0 0 30px;
+      color:var(--muted);
+      font-family:Arial,Helvetica,sans-serif;
+      font-size:.98rem;
+    }
+    .article-content h2,.article-content h3{
+      font-family:Arial,Helvetica,sans-serif;
+      color:#f5f2ff;
+    }
+    .article-content h2{font-size:2.15rem;line-height:1.2;margin:34px 0 16px}
+    .article-content h3{font-size:1.45rem;line-height:1.25;margin:30px 0 14px}
+    .article-content p{margin:0 0 22px;font-size:1rem}
+    .article-content blockquote{
+      margin:28px 0 28px;
+      padding-left:24px;
+      border-left:6px solid rgba(255,255,255,.95);
+      font-style:italic;
+      position:relative;
+    }
+    .article-content blockquote::before{
+      content:"“";
+      display:inline;
+      margin-right:.18em;
+      color:rgba(255,255,255,.98);
+    }
+    .article-content blockquote::after{
+      content:"”";
+      display:inline;
+      margin-left:.18em;
+      color:rgba(255,255,255,.98);
+    }
+    .article-content blockquote p{
+      display:inline;
+      margin:0;
+    }
+    .article-content a{color:#cfc2ff}
+    .article-content .is-centered{text-align:center;}
+    .article-content .b2{
+      font-weight:700;
+      color:#fff;
+      text-shadow:
+        -1px 0 #000,
+        1px 0 #000,
+        0 -1px #000,
+        0 1px #000,
+        -1px -1px #000,
+        1px -1px #000,
+        -1px 1px #000,
+        1px 1px #000;
+    }
+    .article-content [style*="color"]{color:inherit !important}
+    .article-content [style*="background"]{background:transparent !important}
+    .article-content figure{
+      margin:26px 0 28px;
+      text-align:center;
+      position:relative;
+    }
+    .article-content figure img{
+      display:block;
+      height:auto;
+      max-width:100%;
+      margin-left:auto;
+      margin-right:auto;
+      border-radius:4px;
+      cursor:pointer;
+      user-select:none;
+    }
+    .article-content figcaption{
+      margin-top:12px;
+      color:var(--muted);
+      text-align:center;
+      font-family:Arial,Helvetica,sans-serif;
+      font-size:.95rem;
+    }
+    .selected-image{
+      outline:2px solid var(--accent);
+      outline-offset:4px;
+    }
+    figure.has-selected-image{
+      z-index:6;
+    }
+    .resize-handle{
+      position:absolute;
+      width:16px;
+      height:16px;
+      border-radius:999px;
+      background:var(--accent);
+      border:2px solid #fff;
+      box-shadow:0 2px 8px rgba(0,0,0,.3);
+      right:-8px;
+      bottom:-8px;
+      cursor:nwse-resize;
+      display:none;
+      z-index:5;
+    }
+    figure.has-selected-image .resize-handle{display:block}
+    .image-toolbar{
+      position:fixed;
+      left:50%;
+      bottom:18px;
+      transform:translateX(-50%);
+      display:none;
+      z-index:100;
+      background:rgba(7,9,18,.97);
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:10px 12px;
+      font-family:Arial,Helvetica,sans-serif;
+      gap:8px;align-items:center;
+      box-shadow:0 10px 30px rgba(0,0,0,.28);
+    }
+    .image-toolbar input[type=range]{width:220px}
+    .hint{
+      max-width:1200px;margin:12px auto 0;
+      padding:0 14px;color:var(--muted);
+      font-family:Arial,Helvetica,sans-serif;font-size:.92rem;
+    }
+    .dropzone{
+      border:1px dashed rgba(255,255,255,.18);
+      color:var(--muted);
+      border-radius:12px;
+      padding:12px 14px;
+      font-family:Arial,Helvetica,sans-serif;
+      margin-bottom:18px;
+    }
+    .modal-backdrop{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.45);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:300;
+      padding:20px;
+    }
+    .modal{
+      width:min(100%, 420px);
+      background:rgba(10,12,24,.97);
+      border:1px solid rgba(255,255,255,.09);
+      border-radius:16px;
+      box-shadow:0 20px 40px rgba(0,0,0,.35);
+      padding:18px;
+      font-family:Arial,Helvetica,sans-serif;
+    }
+    .modal h3{
+      margin:0 0 12px;
+      font-size:1.1rem;
+      color:#f5f2ff;
+    }
+    .modal p{
+      margin:0 0 12px;
+      color:var(--muted);
+      font-size:.92rem;
+      line-height:1.5;
+    }
+    .modal textarea{
+      width:100%;
+      min-height:110px;
+      resize:vertical;
+      background:rgba(255,255,255,.05);
+      color:var(--text);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:12px;
+      font:inherit;
+    }
+    .modal-actions{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      margin-top:14px;
+    }
+    .modal-actions-left,
+    .modal-actions-right{
+      display:flex;
+      gap:10px;
+    }
+    .modal-actions button{
+      background:rgba(255,255,255,.05);
+      color:var(--text);
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:8px 12px;
+      cursor:pointer;
+      font:inherit;
+    }
+    .modal-actions button:hover{
+      border-color:rgba(255,255,255,.18);
+      background:rgba(255,255,255,.08);
+    }
+    @media (max-width:700px){
+      .editor-shell{width:min(100% - 32px, 100%)}
+      .meta-inputs{grid-template-columns:1fr}
+      .article-title{font-size:2.15rem}
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="toolbar">
+      <button type="button" data-cmd="bold"><b>B</b></button>
+      <button type="button" id="b2Btn"><b>B2</b></button>
+      <button type="button" data-cmd="italic"><i>I</i></button>
+      <button type="button" data-cmd="underline"><u>U</u></button>
+      <button type="button" id="h2Btn">H2</button>
+      <button type="button" id="h3Btn">H3</button>
+      <button type="button" id="pBtn">P</button>
+      <button type="button" id="quoteBtn">Quote</button>
+      <button type="button" id="centerBtn">Center</button>
+      <button type="button" id="linkBtn">Link</button>
+      <button type="button" id="unlinkBtn">Unlink</button>
+      <button type="button" id="insertImageBtn">Add image</button>
+      <button type="button" id="insertHrBtn">HR</button>
+      <button type="button" id="importBtn">Import HTML</button>
+      <button type="button" id="saveDraftBtn">Save draft</button>
+      <button type="button" id="loadDraftBtn">Load draft</button>
+      <button type="button" id="clearDraftBtn">Clear draft</button>
+      <div class="spacer"></div>
+      <button type="button" id="exportBtn">Export HTML</button>
+    </div>
+    <div class="hint">
+      Select text to format it. Click an image to show the slider. Drag the purple handle on the image corner to resize. Right-click an image to open the caption window in the center. Export remembers the last chosen folder in supported browsers. Export now saves to a chosen index.html file when the browser allows it.
+    </div>
+  </div>
+
+  <div class="wrap">
+    <main class="editor-shell">
+      <div class="meta-inputs">
+        <div class="meta-box">
+          <label for="titleInput">Title</label>
+          <input id="titleInput" value="First Diary" />
+        </div>
+        <div class="meta-box">
+          <label for="authorInput">Author</label>
+          <input id="authorInput" value="Mayonez_kun" />
+        </div>
+        <div class="meta-box">
+          <label for="dateInput">Date</label>
+          <input id="dateInput" value="May 30, 2024" />
+        </div>
+      </div>
+
+      <div class="dropzone" id="dropzone">
+        Drag images here, or use “Add image”.
+      </div>
+
+      <article class="article">
+        <h1 class="article-title" id="liveTitle" contenteditable="true">First Diary</h1>
+        <p class="article-meta" id="liveMeta">Mayonez_kun • May 30, 2024</p>
+
+        <section class="article-content" id="editor" contenteditable="true">
+          <h2>Introduction</h2>
+          <p>Write here. You can select text and use the toolbar for bold, italic, underline, headings, and links.</p>
+          <p>Click an image after inserting it to resize it. Right-click an image to add or edit a caption. Export remembers the last chosen folder in supported browsers.</p>
+        </section>
+      </article>
+    </main>
+  </div>
+
+  <div class="image-toolbar" id="imageToolbar">
+    <span>Image width</span>
+    <input type="range" id="imageWidthRange" min="80" max="1200" step="10" />
+    <span id="imageWidthValue"></span>
+    <button type="button" id="removeImageBtn">Remove</button>
+  </div>
+
+  <div class="modal-backdrop" id="captionModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="captionModalTitle">
+      <h3 id="captionModalTitle">Add / edit caption</h3>
+      <p>Right-clicking the image opens this window directly, so you do not need to hunt for a floating menu anymore.</p>
+      <textarea id="captionTextarea" placeholder="Enter caption text..."></textarea>
+      <div class="modal-actions">
+        <div class="modal-actions-left">
+          <button type="button" id="captionRemoveBtn">Remove caption</button>
+        </div>
+        <div class="modal-actions-right">
+          <button type="button" id="captionCancelBtn">Cancel</button>
+          <button type="button" id="captionSaveBtn">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <input type="file" id="imageInput" accept="image/*" multiple hidden />
+  <input type="file" id="htmlInput" accept=".html,text/html" hidden />
+
+  <script>
+    const editor = document.getElementById('editor');
+    const titleInput = document.getElementById('titleInput');
+    const authorInput = document.getElementById('authorInput');
+    const dateInput = document.getElementById('dateInput');
+    const liveTitle = document.getElementById('liveTitle');
+    const liveMeta = document.getElementById('liveMeta');
+    const imageInput = document.getElementById('imageInput');
+    const htmlInput = document.getElementById('htmlInput');
+    const imageToolbar = document.getElementById('imageToolbar');
+    const imageWidthRange = document.getElementById('imageWidthRange');
+    const imageWidthValue = document.getElementById('imageWidthValue');
+    const captionModal = document.getElementById('captionModal');
+    const captionTextarea = document.getElementById('captionTextarea');
+    let selectedImage = null;
+    let lastRange = null;
+    let contextImage = null;
+    let resizeState = null;
+    let isResizing = false;
+
+
+    function insertPlainTextAtCursor(text) {
+      const sel = window.getSelection();
+      if (!sel.rangeCount) return;
+      const range = sel.getRangeAt(0);
+      range.deleteContents();
+
+      const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+      const frag = document.createDocumentFragment();
+
+      lines.forEach((line, index) => {
+        if (index > 0) frag.appendChild(document.createElement('br'));
+        frag.appendChild(document.createTextNode(line));
+      });
+
+      range.insertNode(frag);
+      range.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      saveSelection();
+    }
+
+    function handlePlainPaste(target) {
+      target.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+        insertPlainTextAtCursor(text);
+      });
+    }
+
+    function updateMeta() {
+      liveTitle.textContent = titleInput.value || 'Untitled';
+      liveMeta.textContent = `${authorInput.value || 'Author'} • ${dateInput.value || 'Date'}`;
+      document.title = `${titleInput.value || 'Diary Editor'} - Editor`;
+    }
+
+    titleInput.addEventListener('input', updateMeta);
+    authorInput.addEventListener('input', updateMeta);
+    dateInput.addEventListener('input', updateMeta);
+
+    liveTitle.addEventListener('input', () => {
+      titleInput.value = liveTitle.textContent.trim();
+      updateMeta();
+    });
+
+    handlePlainPaste(editor);
+    handlePlainPaste(liveTitle);
+
+    function saveSelection() {
+      const sel = window.getSelection();
+      if (sel.rangeCount > 0) lastRange = sel.getRangeAt(0);
+    }
+
+    function restoreSelection() {
+      if (!lastRange) return;
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(lastRange);
+    }
+
+    document.addEventListener('selectionchange', () => {
+      const sel = window.getSelection();
+      if (sel.anchorNode && (editor.contains(sel.anchorNode) || liveTitle.contains(sel.anchorNode))) {
+        saveSelection();
+      }
+    });
+
+    function exec(cmd, value=null) {
+      restoreSelection();
+      document.execCommand(cmd, false, value);
+      editor.focus();
+    }
+
+
+    document.querySelectorAll('[data-cmd]').forEach(btn => {
+      btn.addEventListener('click', () => exec(btn.dataset.cmd));
+    });
+
+    document.getElementById('b2Btn').addEventListener('click', () => toggleB2());
+
+    function getClosestB2() {
+      const sel = window.getSelection();
+      if (!sel.rangeCount) return null;
+      let node = sel.anchorNode;
+      if (!node) return null;
+      if (node.nodeType === 3) node = node.parentNode;
+      return node && node.closest ? node.closest('.b2') : null;
+    }
+
+    function unwrapElement(el) {
+      const parent = el.parentNode;
+      while (el.firstChild) parent.insertBefore(el.firstChild, el);
+      parent.removeChild(el);
+    }
+
+    function toggleB2() {
+      restoreSelection();
+      const existing = getClosestB2();
+      if (existing) {
+        unwrapElement(existing);
+        return;
+      }
+
+      const sel = window.getSelection();
+      if (!sel.rangeCount) return;
+      const range = sel.getRangeAt(0);
+      if (range.collapsed) return;
+
+      const span = document.createElement('span');
+      span.className = 'b2';
+
+      try {
+        const contents = range.extractContents();
+        span.appendChild(contents);
+        range.insertNode(span);
+
+        const newRange = document.createRange();
+        newRange.selectNodeContents(span);
+        sel.removeAllRanges();
+        sel.addRange(newRange);
+        saveSelection();
+      } catch (e) {
+        const text = sel.toString();
+        if (!text) return;
+        document.execCommand('insertHTML', false, '<span class="b2">' + escapeHtml(text) + '</span>');
+      }
+    }
+
+    document.getElementById('h2Btn').addEventListener('click', () => exec('formatBlock', 'H2'));
+    document.getElementById('h3Btn').addEventListener('click', () => exec('formatBlock', 'H3'));
+    document.getElementById('pBtn').addEventListener('click', () => exec('formatBlock', 'P'));
+    document.getElementById('quoteBtn').addEventListener('click', () => toggleQuote());
+    document.getElementById('centerBtn').addEventListener('click', () => toggleCenterBlock());
+
+    function getClosestBlockElement(node) {
+      if (!node) return null;
+      if (node.nodeType === 3) node = node.parentNode;
+      if (!node || !node.closest) return null;
+      return node.closest('p, h2, h3, blockquote');
+    }
+
+    function toggleCenterBlock() {
+      restoreSelection();
+      const sel = window.getSelection();
+      if (!sel.rangeCount) return;
+
+      const range = sel.getRangeAt(0);
+      const startBlock = getClosestBlockElement(range.startContainer);
+      const endBlock = getClosestBlockElement(range.endContainer);
+
+      if (!startBlock) return;
+
+      // Only center one block at a time to avoid browser contenteditable weirdness.
+      // If selection spills into the next block, ignore that and use the start block only.
+      if (startBlock.classList.contains('is-centered')) {
+        startBlock.classList.remove('is-centered');
+        startBlock.style.textAlign = '';
+      } else {
+        startBlock.classList.add('is-centered');
+        startBlock.style.textAlign = 'center';
+      }
+
+      const newRange = document.createRange();
+      newRange.selectNodeContents(startBlock);
+      sel.removeAllRanges();
+      sel.addRange(newRange);
+      saveSelection();
+    }
+
+    function getClosestBlockquote() {
+      const sel = window.getSelection();
+      if (!sel.rangeCount) return null;
+      let node = sel.anchorNode;
+      if (!node) return null;
+      if (node.nodeType === 3) node = node.parentNode;
+      return node && node.closest ? node.closest('blockquote') : null;
+    }
+
+    function toggleQuote() {
+      restoreSelection();
+      const existing = getClosestBlockquote();
+      if (existing) {
+        const p = document.createElement('p');
+        p.innerHTML = existing.innerHTML;
+        existing.replaceWith(p);
+        return;
+      }
+      exec('formatBlock', 'BLOCKQUOTE');
+    }
+
+    document.getElementById('linkBtn').addEventListener('click', () => {
+      restoreSelection();
+      const url = prompt('Link URL:');
+      if (url) exec('createLink', url);
+    });
+
+    document.getElementById('unlinkBtn').addEventListener('click', () => exec('unlink'));
+    document.getElementById('insertHrBtn').addEventListener('click', () => exec('insertHorizontalRule'));
+    document.getElementById('insertImageBtn').addEventListener('click', () => imageInput.click());
+    document.getElementById('importBtn').addEventListener('click', () => htmlInput.click());
+
+    imageInput.addEventListener('change', async (e) => {
+      const files = [...e.target.files];
+      if (!files.length) return;
+      for (const file of files) {
+        await insertImageFile(file);
+      }
+      imageInput.value = '';
+    });
+
+    htmlInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const text = await file.text();
+      importHtml(text);
+      htmlInput.value = '';
+    });
+
+    async function fileToDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function insertImageFile(file) {
+      const dataUrl = await fileToDataUrl(file);
+      const fig = document.createElement('figure');
+      fig.setAttribute('contenteditable', 'false');
+      const img = document.createElement('img');
+      img.src = dataUrl;
+      img.alt = file.name.replace(/\.[^.]+$/, '');
+      img.style.width = '520px';
+      fig.appendChild(img);
+      attachResizeHandle(fig);
+      insertNodeAtCursor(fig);
+      placeCaretAfter(fig);
+      bindImage(img);
+    }
+
+    function insertNodeAtCursor(node) {
+      restoreSelection();
+      const sel = window.getSelection();
+      if (!sel.rangeCount) {
+        editor.appendChild(node);
+        return;
+      }
+      const range = sel.getRangeAt(0);
+      range.deleteContents();
+      range.insertNode(node);
+    }
+
+    function placeCaretAfter(node) {
+      const range = document.createRange();
+      range.setStartAfter(node);
+      range.collapse(true);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      saveSelection();
+    }
+
+    function unselectImage() {
+      document.querySelectorAll('figure.has-selected-image').forEach(f => f.classList.remove('has-selected-image'));
+      if (selectedImage) selectedImage.classList.remove('selected-image');
+      selectedImage = null;
+      imageToolbar.style.display = 'none';
+    }
+
+    function positionImageToolbar(img, x=null, y=null) {
+      positionImageToolbar(img, x, y);
+    }
+
+    function selectImage(img) {
+      unselectImage();
+      selectedImage = img;
+      img.classList.add('selected-image');
+      const fig = img.closest('figure');
+      if (fig) fig.classList.add('has-selected-image');
+      const current = readImageWidthPx(img);
+      imageWidthRange.value = current;
+      imageWidthValue.textContent = `${current}px`;
+      imageToolbar.style.display = 'flex';
+    }
+
+    function readImageWidthPx(img) {
+      const m = (img.style.width || '').match(/(\d+)px/);
+      if (m) return Number(m[1]);
+      return Math.round(img.getBoundingClientRect().width || 520);
+    }
+
+    imageWidthRange.addEventListener('input', () => {
+      if (!selectedImage) return;
+      const px = Number(imageWidthRange.value);
+      applyImageWidth(selectedImage, px);
+    });
+
+    function applyImageWidth(img, px) {
+      img.style.width = `${px}px`;
+      img.style.maxWidth = '100%';
+      imageWidthValue.textContent = `${px}px`;
+    }
+
+    document.getElementById('removeImageBtn').addEventListener('click', () => {
+      if (!selectedImage) return;
+      const fig = selectedImage.closest('figure');
+      if (fig) fig.remove();
+      unselectImage();
+    });
+
+    function attachResizeHandle(fig) {
+      if (fig.querySelector('.resize-handle')) return;
+      const handle = document.createElement('span');
+      handle.className = 'resize-handle';
+      handle.addEventListener('mousedown', startImageResize);
+      fig.appendChild(handle);
+    }
+
+    function startImageResize(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      const fig = e.target.closest('figure');
+      const img = fig && fig.querySelector('img');
+      if (!img) return;
+      isResizing = true;
+      selectImage(img);
+      const rect = img.getBoundingClientRect();
+      resizeState = {
+        img,
+        startX: e.clientX,
+        startWidth: rect.width
+      };
+      document.addEventListener('mousemove', onImageResize);
+      document.addEventListener('mouseup', stopImageResize);
+    }
+
+    function onImageResize(e) {
+      if (!resizeState) return;
+      const delta = e.clientX - resizeState.startX;
+      const next = Math.max(80, Math.round(resizeState.startWidth + delta));
+      applyImageWidth(resizeState.img, next);
+      imageWidthRange.value = next;
+    }
+
+    function stopImageResize() {
+      resizeState = null;
+      document.removeEventListener('mousemove', onImageResize);
+      document.removeEventListener('mouseup', stopImageResize);
+      setTimeout(() => { isResizing = false; }, 0);
+    }
+
+    function openCaptionModal() {
+      if (!contextImage) return;
+      const fig = contextImage.closest('figure');
+      const cap = fig && fig.querySelector('figcaption');
+      captionTextarea.value = cap ? cap.textContent : '';
+      captionModal.style.display = 'flex';
+      setTimeout(() => captionTextarea.focus(), 0);
+    }
+
+    function closeCaptionModal() {
+      captionModal.style.display = 'none';
+    }
+
+    function bindImage(img) {
+      img.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        selectImage(img);
+      });
+
+      img.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        selectImage(img);
+      });
+
+      img.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        contextImage = img;
+        selectImage(img);
+        openCaptionModal();
+      });
+
+      const fig = img.closest('figure');
+      if (fig) attachResizeHandle(fig);
+    }
+
+    document.addEventListener('click', (e) => {
+      if (isResizing) return;
+      const clickedInsideFigure = e.target.closest && e.target.closest('figure');
+      const clickedToolbar = imageToolbar.contains(e.target);
+      const clickedModal = captionModal.contains(e.target);
+      if (!clickedInsideFigure && !clickedToolbar && !clickedModal) {
+        unselectImage();
+      }
+    });
+
+    document.getElementById('captionCancelBtn').addEventListener('click', closeCaptionModal);
+
+    document.getElementById('captionSaveBtn').addEventListener('click', () => {
+      if (!contextImage) return;
+      const fig = contextImage.closest('figure');
+      if (!fig) return;
+      const text = captionTextarea.value.trim();
+      let cap = fig.querySelector('figcaption');
+
+      if (!text) {
+        if (cap) cap.remove();
+        closeCaptionModal();
+        return;
+      }
+
+      if (!cap) {
+        cap = document.createElement('figcaption');
+        fig.appendChild(cap);
+      }
+      cap.textContent = text;
+      closeCaptionModal();
+    });
+
+    document.getElementById('captionRemoveBtn').addEventListener('click', () => {
+      if (!contextImage) return;
+      const fig = contextImage.closest('figure');
+      const cap = fig && fig.querySelector('figcaption');
+      if (cap) cap.remove();
+      closeCaptionModal();
+    });
+
+        captionModal.addEventListener('click', (e) => {
+      if (e.target === captionModal) closeCaptionModal();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeCaptionModal();
+    });
+
+    function bindAllImages() {
+      editor.querySelectorAll('img').forEach(bindImage);
+      editor.querySelectorAll('figure').forEach(attachResizeHandle);
+    }
+    editor.querySelectorAll('figure').forEach(fig => fig.setAttribute('contenteditable', 'false'));
+    bindAllImages();
+
+    const dropzone = document.getElementById('dropzone');
+    ['dragenter','dragover'].forEach(evt => {
+      dropzone.addEventListener(evt, e => {
+        e.preventDefault();
+        dropzone.style.borderColor = 'rgba(255,255,255,.45)';
+      });
+    });
+    ['dragleave','drop'].forEach(evt => {
+      dropzone.addEventListener(evt, e => {
+        e.preventDefault();
+        dropzone.style.borderColor = 'rgba(255,255,255,.18)';
+      });
+    });
+    dropzone.addEventListener('drop', async e => {
+      const files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
+      for (const file of files) await insertImageFile(file);
+    });
+
+    function buildExportHtml() {
+      const title = escapeHtml(titleInput.value || 'Untitled');
+      const author = escapeHtml(authorInput.value || 'Author');
+      const date = escapeHtml(dateInput.value || 'Date');
+      const content = editor.innerHTML.trim();
+
+      return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${title}</title>
+  <link rel="stylesheet" href="../../style.css" />
+</head>
+<body>
+  <main class="article-shell">
+    <article class="article">
+      <a class="back-link" href="../../index.html">← Back to all entries</a>
+
+      <header class="article-header">
+        <h1 class="article-title">${title}</h1>
+        <p class="article-meta">${author} • ${date}</p>
+      </header>
+
+      <section class="article-content">
+        ${content}
+      </section>
+    </article>
+  </main>
+</body>
+</html>`;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, c => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      }[c]));
+    }
+
+    document.getElementById('exportBtn').addEventListener('click', async () => {
+      const html = buildExportHtml();
+
+      if (window.showSaveFilePicker && window.isSecureContext) {
+        try {
+          const handle = await window.showSaveFilePicker({
+            id: 'diary-index-html',
+            startIn: 'documents',
+            suggestedName: 'index.html',
+            types: [
+              {
+                description: 'HTML file',
+                accept: { 'text/html': ['.html'] }
+              }
+            ]
+          });
+
+          const writable = await handle.createWritable();
+          await writable.write(html);
+          await writable.close();
+          return;
+        } catch (err) {
+          if (err && err.name === 'AbortError') return;
+          console.error(err);
+        }
+      }
+
+      const blob = new Blob([html], {type: 'text/html;charset=utf-8'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'index.html';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    document.getElementById('saveDraftBtn').addEventListener('click', () => {
+      const payload = {
+        title: titleInput.value,
+        author: authorInput.value,
+        date: dateInput.value,
+        content: editor.innerHTML
+      };
+      localStorage.setItem('diaryEditorDraft', JSON.stringify(payload));
+      alert('Draft saved in this browser.');
+    });
+
+    document.getElementById('loadDraftBtn').addEventListener('click', () => {
+      const raw = localStorage.getItem('diaryEditorDraft');
+      if (!raw) {
+        alert('No saved draft in this browser.');
+        return;
+      }
+      const payload = JSON.parse(raw);
+      titleInput.value = payload.title || '';
+      authorInput.value = payload.author || '';
+      dateInput.value = payload.date || '';
+      editor.innerHTML = payload.content || '';
+      editor.querySelectorAll('figure').forEach(fig => fig.setAttribute('contenteditable', 'false'));
+      updateMeta();
+      bindAllImages();
+    });
+
+
+    document.getElementById('clearDraftBtn').addEventListener('click', () => {
+      localStorage.removeItem('diaryEditorDraft');
+      alert('Saved draft removed from this browser.');
+    });
+
+
+    function importHtml(rawHtml) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(rawHtml, 'text/html');
+      const importedTitle = doc.querySelector('.article-title');
+      const importedMeta = doc.querySelector('.article-meta');
+      const importedContent = doc.querySelector('.article-content');
+
+      if (importedTitle) titleInput.value = importedTitle.textContent.trim();
+
+      if (importedMeta) {
+        const metaText = importedMeta.textContent.trim();
+        const parts = metaText.split('•').map(s => s.trim());
+        if (parts[0]) authorInput.value = parts[0];
+        if (parts[1]) dateInput.value = parts[1];
+      }
+
+      if (importedContent) {
+        editor.innerHTML = importedContent.innerHTML;
+        editor.querySelectorAll('figure').forEach(fig => fig.setAttribute('contenteditable', 'false'));
+        bindAllImages();
+      }
+
+      updateMeta();
+      alert('HTML imported.');
+    }
+
+    updateMeta();
+  </script>
+</body>
+</html>
